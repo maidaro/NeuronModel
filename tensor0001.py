@@ -9,8 +9,8 @@ x_data = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
 # define output pattern, rank of output pattern should be equal to input, or tensorflow broadcast output tensor and result is unpredictable
 y_data = np.array([[0], [1], [1], [1]])
 
-X = tf.placeholder(tf.float32, name="X")
-Y = tf.placeholder(tf.float32, name="Y")
+X = tf.placeholder(tf.float32, [None, 2], name="X")
+Y = tf.placeholder(tf.float32, [None, 1], name="Y")
 
 with tf.name_scope('output'):
     # define NN function model
@@ -37,8 +37,7 @@ with tf.name_scope('optimizer'):
     # define optimization model
     ## at the first version, I consider only recall process and missed learning process, chaning weight of NN
     ## learning_rate <- Hebbian rule
-    # cost = tf.sqrt(tf.reduce_sum(tf.square(tf.subtract(hypothesis, Y))))
-    cost = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=Y, logits=hypothesis))
+    cost = tf.sqrt(tf.reduce_sum(tf.square(tf.subtract(hypothesis, Y))))
     optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.1)
     train_op = optimizer.minimize(cost)
     nn.variable_summaries(cost, 'Cost')
@@ -52,30 +51,35 @@ with tf.Session() as sess:
     merged = tf.summary.merge_all()
     writer = tf.summary.FileWriter('./logs', sess.graph)
 
-    print(sess.run(W), sess.run(b))
-    #print(sess.run(tf.matmul(X, W), feed_dict={X: x_data}))
-    #print(sess.run(hypothesis, feed_dict={X: x_data}))
-    print(sess.run(tf.subtract(hypothesis, Y), feed_dict={X: x_data, Y: y_data}))
-    #print(sess.run(tf.square(tf.subtract(hypothesis, Y)), feed_dict={X: x_data, Y: y_data}))
-    #print(sess.run(tf.reduce_sum(tf.square(tf.subtract(hypothesis, Y))), feed_dict={X: x_data, Y: y_data}))
-    #print(sess.run(cost, feed_dict={X: x_data, Y: y_data}))
-    grad = optimizer.compute_gradients(cost)
-    print(sess.run(grad, feed_dict={X: x_data, Y: y_data}))
-    sess.run(optimizer.apply_gradients(grad), feed_dict={X: x_data, Y: y_data})
-    print(sess.run(W))
+    # print(sess.run(W), sess.run(b))
+    # print(sess.run(tf.matmul(X, W), feed_dict={X: x_data}))
+    # print(sess.run(hypothesis, feed_dict={X: x_data}))
+    # print(sess.run(tf.subtract(hypothesis, Y), feed_dict={X: x_data, Y: y_data}))
+    # print(sess.run(tf.square(tf.subtract(hypothesis, Y)), feed_dict={X: x_data, Y: y_data}))
+    # print(sess.run(tf.reduce_sum(tf.square(tf.subtract(hypothesis, Y))), feed_dict={X: x_data, Y: y_data}))
+    # print(sess.run(cost, feed_dict={X: x_data, Y: y_data}))
+    #grad = optimizer.compute_gradients(cost)
+    #print(sess.run(grad, feed_dict={X: x_data, Y: y_data}))
+    #sess.run(optimizer.apply_gradients(grad), feed_dict={X: x_data, Y: y_data})
+    #print(sess.run(W))
 
     # set learning iteration parameter
     #   - iteration count
     #   - error rate
     #   - based on normal distribution?
-    for step in range(500):
-        _, cost_val = sess.run([train_op, cost], feed_dict={X: x_data, Y: y_data})
+    for step in range(100):
 
-        summary = sess.run(merged, feed_dict={X: x_data, Y: y_data})
-        writer.add_summary(summary, step)
+        num_data = len(x_data)
+        for i in range(num_data):
+            x_i = x_data[i:i +1]
+            y_i = y_data[i:i +1]
+            _, cost_val = sess.run([train_op, cost], feed_dict={X:x_i, Y:y_i})
 
-        if (step + 1) % 100 == 0:
-            print(step + 1, cost_val, sess.run(W), sess.run(b))
+            summary = sess.run(merged, feed_dict={X: x_i, Y: y_i})
+            writer.add_summary(summary, step)
+
+            if (step + 1) % 100 == 0:
+                print(step + 1, cost_val, sess.run(W), sess.run(b))
 
     # testing
     print("\n=== Test OR Implement ===")
