@@ -67,3 +67,29 @@ class RunLearnModel:
 
     def Recall(self, model, feed_dict):
         return self.sess.run(model.activation, feed_dict=feed_dict)
+
+    def Test_1(self, Target, model, feed_dict):
+
+        print("\n=== Recall '{}' Implement ===".format(self.name))
+
+        prediction = model.activation
+        target = Target
+        print('Recall:', self.sess.run(prediction, feed_dict=feed_dict))
+        print('Target:', self.sess.run(target, feed_dict=feed_dict))
+
+        accuracy = tf.sqrt(tf.reduce_sum(tf.square(tf.subtract(target, prediction))))
+        print('Error: %.2f' % self.sess.run(accuracy * 100, feed_dict=feed_dict))
+
+
+    def Test_2(self, Target, model, feed_dict):
+
+        print("\n=== Recall '{}' Implement ===".format(self.name))
+
+        prediction = tf.argmax(model.activation, 1)
+        target = tf.argmax(Target, 1)
+        print('Recall:', self.sess.run(prediction, feed_dict=feed_dict))
+        print('Target:', self.sess.run(target, feed_dict=feed_dict))
+
+        is_correct = tf.equal(prediction, target)
+        accuracy = tf.reduce_mean(tf.cast(is_correct, tf.float32))
+        print('Accuracy: %.2f' % self.sess.run(accuracy * 100, feed_dict=feed_dict))
