@@ -4,52 +4,66 @@ import numpy as np
 def sigmoid_tf(x):
     return 1.0/(1.0 + tf.exp(-x))
 
-# implement OR NN machine using tensorflow
+def relu_tf(x):
+    return tf.maximum(x, 0.0)
 
 # define input pattern
-x_data = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
-# define target pattern
-y_data = np.array([0, 1, 1, 1])
+def DefPlaceHolder(num_pattern, name = None):
+    return tf.placeholder(tf.float32, [None, num_pattern], name=name)
 
 ### define NN function model
-class NnModelCell:
+class NnFullConnectedLayer:
 
-    X = tf.placeholder(tf.float32, name="X")
+    def __init__(self, Input, num_in_ptn, num_out_ptn, act_func, wtf = -1.0, wtt = 1.0, bias = 'Constant', btf = -1.0, btt = 1.0):
+        assert bias == 'Constant' or bias == 'Variable'
 
-    def __init__(self, i_rank, t_rank, act_func):
         ## W <- weight of connection
         ## b <- bias of neuron
         ## It is important to define initial value for Neuron network to find solution
-        self.W = tf.Variable(tf.random_uniform([i_rank, ], -1.0, 1.0), name='Weight')
+        self.W = tf.Variable(tf.random_uniform([num_in_ptn, num_out_ptn], wtf, wtt), name='Weight')
         ## bias is disabled until general delta rule is used
-        # b = tf.Variable(tf.zeros([1, ]))
-        self.b = tf.constant(0, dtype=tf.float32, shape=[t_rank, ], name='Bias')
-        # hypothesis = tf.reduce_sum(tf.multiply(X, W), 1) + b
-        ## hypothesis is active value from neuron
+        if bias == 'Constant':
+            self.b = tf.constant(btf, dtype=tf.float32, shape=[num_out_ptn, ], name='Bias')
+        elif bias == 'Variable':
+            self.b = tf.Variable(tf.random_uniform([num_out_ptn, ], btf, btt))
         ## X is active value of input neuron
         ## W is weight of connection from that neuron
+        # activation = tf.reduce_sum(tf.multiply(X, W), 1) + b
+        ## activation is active value from neuron
+        self.activation = act_func(tf.add(tf.matmul(Input, self.W), self.b))
 
-        self.hypothesis = act_func(tf.reduce_sum(tf.multiply(self.X, self.W), i_rank - 1) + self.b)
-
-# define optimization model
-class LearningModel:
-    Y = tf.placeholder(tf.float32, name="Y")
-
+class GradientDescentOptimizer:
     ## at the first version, I consider only recall process and missed learning process, chaning weight of NN
+    ## GradientDescentOptimizer is learning model
     ## learning_rate <- Hebbian rule
-    def __init__(self, t_rank, hebbian_learning_rate, model):
-        cost = tf.sqrt(tf.reduce_sum(tf.square(model.hypothesis - self.Y), 0))
-        optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.1)
-        train_op = optimizer.minimize(cost)
+    def __init__(self, Target, Output, hebbian_learning_rate = 0.1):
+        self.cost_model = tf.sqrt(tf.reduce_sum(tf.square(tf.subtract(Target, Output.activation))))
+        optimizer = tf.train.GradientDescentOptimizer(learning_rate=hebbian_learning_rate)
+        self.train_op = optimizer.minimize(self.cost_model)
 
-def variable_summaries(var, name = None):
-  """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
-  with tf.name_scope('summaries_' + name):
-    mean = tf.reduce_mean(var)
-    tf.summary.scalar('mean', mean)
-    with tf.name_scope('stddev'):
-      stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
-    tf.summary.scalar('stddev', stddev)
-    tf.summary.scalar('max', tf.reduce_max(var))
-    tf.summary.scalar('min', tf.reduce_min(var))
-    tf.summary.histogram('histogram', var)
+class SoftmaxCrossEntropy:
+    def __init__(self, Target, Output, hebbian_learning_rate = 0.1):
+        self.cost_model = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=Target, logits=Output.activation))
+        optimizer = tf.train.AdamOptimizer(learning_rate=hebbian_learning_rate)
+        self.train_op = optimizer.minimize(self.cost_model)
+
+class RunLearnModel:
+    def __init__(self, name):
+        self.name = name
+        self.sess = tf.Session()
+        ## initialize neuron network
+        self.sess.run(tf.global_variables_initializer())
+
+    def Learn(self, optimizer, feed_dict, output = 1000, epoch = 10000):
+
+        # set learning iteration parameter
+        #   - iteration count
+        #   - error rate
+        #   - based on normal distribution?
+        for step in range(epoch):
+            _, cost_val = self.sess.run([optimizer.train_op, optimizer.cost_model], feed_dict=feed_dict)
+            if (step + 1) % output == 0:
+                print(step + 1, cost_val)
+
+    def Recall(self, model, feed_dict):
+        return self.sess.run(model.activation, feed_dict=feed_dict)

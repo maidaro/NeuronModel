@@ -9,37 +9,18 @@ x_data = [[0, 0], [0, 1], [1, 0], [1, 1]]
 # define output data
 y_data = [[0], [0], [0], [1]]
 
-X = tf.placeholder(tf.float32, name="X")
-Y = tf.placeholder(tf.float32, name="Y")
+X = tf.placeholder(tf.float32, [None, 2], name="X")
+Y = tf.placeholder(tf.float32, [None, 1], name="Y")
 
-# define NN function model
-W = tf.Variable(tf.random_uniform([2, 1], -1.0, 1.0), name='Weight')
-b = tf.constant(0, dtype=tf.float32, shape=[1, ], name='Bias')
-#hypothesis = tf.reduce_sum(tf.multiply(X, W), 1) + b
-hypothesis = nn.sigmoid_tf(tf.add(tf.matmul(X, W), b))
+layer = nn.NnFullConnectedLayer(X, 2, 1, tf.sigmoid_tf, bias='Variable')
+learn = nn.GradientDescentOptimizer(Y, layer)
 
-# define optimization model
-cost = tf.sqrt(tf.reduce_sum(tf.square(tf.subtract(hypothesis, Y))))
-optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.1)
-train_op = optimizer.minimize(cost)
+run = nn.RunLearnModel("AND")
+run.Learn(learn, feed_dict={X:x_data, Y:y_data})
 
-# run NN
-with tf.Session() as sess:
-    sess.run(tf.global_variables_initializer())
-
-    # set learning iteration parameter
-    #   - iteration count
-    #   - error rate
-    #   - based on normal distribution?
-    for step in range(100):
-        _, cost_val = sess.run([train_op, cost], feed_dict={X: x_data, Y: y_data})
-
-        if (step + 1) % 100 == 0:
-            print(step + 1, cost_val, sess.run(W), sess.run(b))
-
-    # testing
-    print("\n=== Test ===")
-    print("X: [0, 0], Y:", sess.run(hypothesis, feed_dict={X: [[0, 0]]}))
-    print("X: [0, 1], Y:", sess.run(hypothesis, feed_dict={X: [[0, 1]]}))
-    print("X: [1, 0], Y:", sess.run(hypothesis, feed_dict={X: [[1, 0]]}))
-    print("X: [1, 1], Y:", sess.run(hypothesis, feed_dict={X: [[1, 1]]}))
+print("\n=== Test AND Implement ===")
+num_data = len(x_data)
+for i in range(num_data):
+    x_i = x_data[i:i +1] # shape of x_data[0] and x_data[:] (slice) is different
+    y_i = y_data[i:i +1]
+    print("I:{}, O:{}/R:{}".format(x_i, y_i, run.Recall(layer, feed_dict={X:x_i, Y:y_i})))
