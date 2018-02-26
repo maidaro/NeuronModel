@@ -1,28 +1,19 @@
-import numpy as np
 from keras.models import Sequential
-from keras.layers import Dense, Dropout
-from keras.utils import plot_model
+from keras.layers import Dense
+from keras.utils import *
+import numpy as np
 
+# XOR logical gate via Keras
 
-# Generate dummy data
-x_train = np.random.random((1000, 20))
-y_train = np.random.randint(2, size=(1000, 1))
-x_test = np.random.random((100, 20))
-y_test = np.random.randint(2, size=(100, 1))
+# define input data
+x_data = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
+# define output data
+y_data = np.array([[0], [1], [1], [0]])
 
 model = Sequential()
-model.add(Dense(64, input_dim=20, activation='relu'))
-model.add(Dropout(0.5))
-model.add(Dense(64, activation='relu'))
-model.add(Dropout(0.5))
-model.add(Dense(1, activation='sigmoid'))
-
-model.compile(loss='binary_crossentropy',
-              optimizer='rmsprop',
-              metrics=['accuracy'])
-
-model.fit(x_train, y_train,
-          epochs=20,
-          batch_size=128)
-score = model.evaluate(x_test, y_test, batch_size=128)
-plot_model(model, to_file='model.png')
+model.add(Dense(2, activation='sigmoid', input_dim=2))
+model.add(Dense(1, activation='sigmoid', input_dim=2))
+model.compile(optimizer='rmsprop', loss='mean_squared_error', metrics=['accuracy'])
+model.fit(x_data, y_data, epochs=10000, verbose = 0, batch_size=None)
+print('Score:{}'.format(model.evaluate(x_data, y_data, batch_size=None)))
+print('Recall:{}'.format(model.predict(x_data, batch_size=None)))
