@@ -1,0 +1,4 @@
+Machine Neuron
+*.sublime-build
+__pycache__
+.idea
