@@ -1,39 +1,49 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.stats as stats
+import seaborn as sns
 
-def df_scale(x, scale):
-    return x.mul(pow(10, scale)).round()
+df_raw=pd.DataFrame({
+    'A':np.random.random_sample(size = 4096) * 1000,
+    'T':np.random.randint(2, size=4096)},
+    columns=['A','T'])
 
-df=pd.DataFrame({
-    'A':np.random.uniform(size = 1024),
-    'B':np.random.uniform(size = 1024),
-    'C':np.random.uniform(size = 1024),
-    'D':np.random.uniform(size = 1024),
-    'E':np.random.uniform(size = 1024),
-    'F':np.random.uniform(size = 1024),
-    'G':np.random.uniform(size = 1024),
-    'H':np.random.uniform(size = 1024),
-    'T':np.random.randint(2, size=1024)},
-    columns=['A','B','C','D','E','F','G','H','T'])
+df_sample=df_raw.sample(n=1000)
 
-df_sample=pd.DataFrame({
-    'A':df_scale(df.A, 2),
-    'B':df_scale(df.B, 2),
-    'C':df_scale(df.C, 2),
-    'D':df_scale(df.D, 2),
-    'E':df_scale(df.E, 2),
-    'F':df_scale(df.F, 2),
-    'G':df_scale(df.G, 2),
-    'H':df_scale(df.H, 2),
-    'T':np.random.randint(2, size=1024)},
-    columns=['A','B','C','D','E','F','G','H','T'])
+print(df_sample)
+# Draw joint probability P(A,T)
+plt.figure()
+plt.subplot(151)
+sns.distplot(df_sample['A'], kde=True, rug=True, fit=stats.norm)
+plt.subplot(152)
+sns.distplot(df_sample['A'], bins=50, kde=True, rug=True, fit=stats.norm)
+plt.subplot(153)
+sns.kdeplot(df_sample['A'], bw=0.5)
+plt.subplot(154)
+sns.kdeplot(df_sample['A'], bw=0.3)
+plt.subplot(155)
+sns.kdeplot(df_sample['A'], bw=0.1)
 
-#df_tbl=df_sample.pivot_table(values=['T'], index=['A'], aggfunc=np.sum)
-df_tbl_A=df_sample.groupby(by='A')
-df_tbl=df_tbl_A['T'].sum()/df_sample['T'].count()
-df_tbl.plot.bar()
-plt.xticks([])
-#plt.scatter(df_sample['A'], df_sample['T'])
-#df_sample['A'].plot.hist()
+kernel = stats.gaussian_kde(df_sample['A'])
+xs = np.linspace(df_sample['A'].min(), df_sample['A'].max(), 1000)
+kernel.set_bandwidth(0.337)
+pdf=kernel.pdf(xs)
+print('Samples')
+print(xs)
+print('Density')
+print(pdf, pdf.sum(), kernel.integrate_box_1d(-np.inf, np.inf))
+
+plt.figure()
+plt.subplot(161)
+sns.distplot(df_sample['A'], bins=50, kde=True, rug=True, fit=stats.norm)
+plt.subplot(162)
+sns.distplot(df_sample['T'], bins=50, kde=True, rug=True, fit=stats.norm)
+plt.subplot(163)
+sns.distplot(df_sample[df_sample['T'] != 0].iloc[:,0], bins=50, kde=True, rug=True, fit=stats.norm)
+plt.subplot(164)
+sns.distplot(df_sample[df_sample['T'] == 0].iloc[:,0], bins=50, kde=True, rug=True, fit=stats.norm)
+plt.subplot(165)
+plt.bar(xs, pdf)
+
 plt.show()
