@@ -30,5 +30,5 @@ pdf = kernel.pdf(pos)
 print(pdf)
 
 plt.figure()
-sns.heatmap(pdf.reshape([500,50]))
+sns.heatmap(pdf.reshape(xx.shape))
 plt.show()
