@@ -10,15 +10,14 @@ df_raw=pd.DataFrame({
     columns=['A','T'])
 
 df_sample=df_raw.sample(n=1000)
-r = np.vstack([df_sample.iloc[:,0].ravel(), df_sample.iloc[:,1].ravel()])
-#print(r)
-kernel_xy = stats.gaussian_kde(r)
-kernel_xy.set_bandwidth(0.3)
 
+data_xy = np.vstack([df_sample.iloc[:,0].ravel(), df_sample.iloc[:,1].ravel()])
 data_x = df_sample.iloc[:,0]
+#print(data_xy)
+kernel_xy = stats.gaussian_kde(data_xy)
+kernel_xy.set_bandwidth(0.3)
 kernel_x = stats.gaussian_kde(data_x.ravel())
 kernel_x.set_bandwidth(0.3)
-#print(kernel_x(xx.ravel()))
 
 yeval = lambda x : x == 1
 data_y1 = df_sample[yeval(df_sample.iloc[:,1])].iloc[:,0]
@@ -39,19 +38,20 @@ plt.subplot(2, 2, 1)
 xx, yy = np.meshgrid(xs, ys)
 pos_xy = np.vstack([xx.ravel(), yy.ravel()])
 pdf_xy = kernel_xy(pos_xy).reshape(xx.shape)
-print(pos_xy.shape, pos_xy)
-print(pdf_xy.shape, pdf_xy)
+#print(pos_xy.shape, pos_xy)
+#print(pdf_xy.shape, pdf_xy)
 sns.heatmap(pdf_xy, cbar=False)
-# pyx density
+# pyx density computed by fxy(x,y)/fy(y)
 plt.subplot(2, 2, 3)
 pdf_x = kernel_x(xs).reshape([1,-1])
-print(pdf_x.shape, pdf_x)
+#print(pdf_x.shape, pdf_x)
 pdf_pyx = pdf_xy / pdf_x
-print(pdf_pyx.T.shape, pdf_pyx.T)
+#print(pdf_pyx.T.shape, pdf_pyx.T)
 sns.heatmap(pdf_pyx, cbar=False)
-# pyx method1
+# py computed by integration p(y) for (0.5, 1.0)
 plt.subplot(2, 2, 2)
-pyx=pdf_pyx.T[:,25:].sum(axis=1)
+pyx=np.array([stats.gaussian_kde(x).integrate_box_1d(df_sample.iloc[:,1].values.mean(), np.inf) for x in pdf_pyx.T])
+print(pyx.shape, pyx)
 plt.plot(xs, pyx)
 plt.title('P(T=1)')
 # pyx method2
