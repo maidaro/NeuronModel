@@ -14,7 +14,7 @@ def cal_pyx(kernel_x_y1, kernel_x_y0, py, xs):
 	return px_y1 / (px_y1 + px_noty1)
 
 df_raw=pd.DataFrame({
-    'A':np.random.random_sample(size = 4096) * 1000,
+    'A':np.random.normal(size = 4096),
     'T':np.random.randint(2, size=4096)},
     columns=['A','T'])
 
@@ -51,13 +51,14 @@ pdf_xy = kernel_xy(pos_xy).reshape(xx.shape)
 #print(pdf_xy.shape, pdf_xy)
 sns.heatmap(pdf_xy, cbar=False)
 # pyx density computed by fxy(x,y)/fy(y)
+# py computed by integration p(y) for (0.5, 1.0)
 plt.subplot(2, 2, 2)
 plt.plot(xs, kernel_x_y1(xs))
 plt.title('f(T=1)')
 # pyx method2
 plt.subplot(2, 2, 3)
 pyx = cal_pyx(kernel_x_y1, kernel_x_y0, py, xs)
-print(pyx.shape, pyx)
+#print(pyx.shape, pyx)
 plt.plot(xs, pyx.reshape(xs.shape))
 plt.title('P(T=1)')
 plt.subplot(2, 2, 4)
@@ -75,5 +76,13 @@ plt.plot(history.history['loss'], 'b', label='loss')
 plt.twinx()
 plt.plot(history.history['mean_absolute_percentage_error'], 'r', label='mape')
 plt.legend()
+
+# df_test = df_raw.sample(n=10)
+# data_test = df_test.iloc[:,0].values
+# x_test = np.array([(0, x) for x in data_test]).reshape([-1,2])
+# y_test = cal_pyx(kernel_x_y1, kernel_x_y0, py, data_test)
+# print(x_test)
+# print(y_test)
+# print(model.predict(x_test))
 
 plt.show()
