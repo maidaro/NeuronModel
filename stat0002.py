@@ -17,11 +17,11 @@ def transform_xs(x):
 	return [0, x]
 
 df_raw=pd.DataFrame({
-    'A':np.random.random_sample(size = 4096) * 1000,
-    'T':np.random.randint(2, size=4096)},
+    'A':np.random.random_sample(size=10000),
+    'T':np.random.randint(2, size=10000)},
     columns=['A','T'])
 
-df_sample=df_raw.sample(n=1000)
+df_sample=df_raw.sample(n=2048)
 
 data_xy = np.vstack([df_sample.iloc[:,0].ravel(), df_sample.iloc[:,1].ravel()])
 data_x = df_sample.iloc[:,0]
@@ -60,18 +60,19 @@ plt.plot(xs, kernel_x_y1(xs))
 plt.title('f(T=1)')
 # pyx method2
 data_learn = df_sample
-x_data = np.array([transform_xs(x) for x in data_learn.iloc[:,0].values]).reshape([-1,2])
+x_data = np.array([transform_xs(x) for x in data_learn.iloc[:,0].values])
 y_data = cal_pyx(kernel_x_y1, kernel_x_y0, py, data_learn.iloc[:,0].values)
 print(y_data)
-test_data = df_raw.sample(n=1000)
-x_test = np.array([transform_xs(x) for x in test_data.iloc[:,0].values]).reshape([-1,2])
+test_data = df_raw.sample(n=2048)
+x_test = np.array([transform_xs(x) for x in test_data.iloc[:,0].values])
 y_test = cal_pyx(kernel_x_y1, kernel_x_y0, py, test_data.iloc[:,0].values)
 model = Sequential()
-model.add(Dense(x_data.shape[1], activation='sigmoid', input_dim=x_data.shape[1]))
+model.add(Dense(x_data.shape[1] * 5, activation='relu', input_dim=x_data.shape[1]))
+model.add(Dense(x_data.shape[1] * 5, activation='relu'))
 model.add(Dense(1, activation='sigmoid'))
 model.compile(optimizer='adam', loss='mean_squared_error', metrics=['acc'])
 history=model.fit(x_data, y_data, epochs=30, verbose = 0, validation_data=(x_test, y_test))
-x_summary = np.array([transform_xs(x) for x in xs]).reshape([-1,2])
+x_summary = np.array([transform_xs(x) for x in xs])
 y_summary = model.predict(x_summary)
 plt.subplot(2, 2, 3)
 pyx = cal_pyx(kernel_x_y1, kernel_x_y0, py, xs)
