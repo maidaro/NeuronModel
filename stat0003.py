@@ -7,6 +7,7 @@ from keras.models import Sequential
 from keras.layers import Dense
 from keras.utils import *
 from keras.callbacks import *
+from keras.utils.generic_utils import get_custom_objects
 
 def cal_pyx(kernel_x_y1, kernel_x_y0, py, xs):
 	px_y1 = kernel_x_y1(xs) * py
@@ -67,21 +68,21 @@ y_data = learn_data.iloc[:,1]
 print(y_data)
 test_data = df_raw.sample(n=2048)
 x_test = np.array([transform_xs(x) for x in test_data.iloc[:,0].values])
-y_test = test_data.iloc[:,1]
 #y_test = cal_pyx(kernel_x_y1, kernel_x_y0, py, test_data.iloc[:,0].values)
+y_test = test_data.iloc[:,1]
 model = Sequential()
-model.add(Dense(x_data.shape[1] * 5, activation='relu', input_dim=x_data.shape[1]))
-model.add(Dense(x_data.shape[1] * 5, activation='relu'))
+model.add(Dense(10, activation='relu', input_dim=x_data.shape[1]))
+model.add(Dense(10, activation='relu'))
 model.add(Dense(1, activation='sigmoid'))
 model.compile(optimizer='adam', loss='mean_squared_error', metrics=['acc'])
 history=model.fit(x_data, y_data, epochs=30, verbose = 0, validation_data=(x_test, y_test))
-x_summary = np.array([transform_xs(x) for x in xs])
-y_summary = model.predict(x_summary)
+x_summary=np.linspace(-2.5, 2.5, 100)
+y_summary = model.predict(np.array([transform_xs(x) for x in x_summary]))
 plt.subplot(2, 2, 3)
-pyx = cal_pyx(kernel_x_y1, kernel_x_y0, py, xs)
+pyx = cal_pyx(kernel_x_y1, kernel_x_y0, py, x_summary)
 #print(pyx.shape, pyx)
-plt.scatter(xs, pyx.reshape(xs.shape), s=1, c='b', label='sample')
-plt.scatter(xs, y_summary, s=1, c='r', label='predict')
+plt.scatter(x_summary, pyx.reshape(x_summary.shape), s=1, c='b', label='sample')
+plt.scatter(x_summary, y_summary, s=1, c='r', label='predict')
 plt.legend()
 plt.title('P(T=1)')
 plt.subplot(2, 2, 4)
