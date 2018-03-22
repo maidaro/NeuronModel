@@ -61,11 +61,13 @@ plt.title('f(T=1)')
 # pyx method2
 data_learn = df_sample
 x_data = np.array([transform_xs(x) for x in data_learn.iloc[:,0].values])
-y_data = cal_pyx(kernel_x_y1, kernel_x_y0, py, data_learn.iloc[:,0].values)
+y_data = data_learn.iloc[:,0].values
+#y_data = cal_pyx(kernel_x_y1, kernel_x_y0, py, data_learn.iloc[:,0].values)
 print(y_data)
 test_data = df_raw.sample(n=2048)
 x_test = np.array([transform_xs(x) for x in test_data.iloc[:,0].values])
-y_test = cal_pyx(kernel_x_y1, kernel_x_y0, py, test_data.iloc[:,0].values)
+y_test = test_data.iloc[:,1].values
+#y_test = cal_pyx(kernel_x_y1, kernel_x_y0, py, test_data.iloc[:,0].values)
 model = Sequential()
 model.add(Dense(x_data.shape[1] * 5, activation='relu', input_dim=x_data.shape[1]))
 model.add(Dense(x_data.shape[1] * 5, activation='relu'))
