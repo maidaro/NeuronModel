@@ -7,6 +7,11 @@ from keras.models import Sequential
 from keras.layers import Dense
 from keras.utils import *
 from keras.callbacks import *
+from keras.utils.generic_utils import get_custom_objects
+from sklearn.naive_bayes import GaussianNB
+
+NUM_LAYER1 = 1000
+NUM_HIDDEN = 500
 
 def cal_pyx(kernel_x_y1, kernel_x_y0, py, xs):
 	px_y1 = kernel_x_y1(xs) * py
@@ -20,6 +25,34 @@ df_raw=pd.DataFrame({
     'A':np.random.normal(size=10000),
     'T':np.random.randint(2, size=10000)},
     columns=['A','T'])
+
+def create_model(input_dim):
+	model = Sequential()
+	model.add(Dense(NUM_LAYER1, activation='relu', input_dim=input_dim))
+	model.add(Dense(NUM_HIDDEN, activation='relu'))
+	model.add(Dense(1, activation='sigmoid'))
+	model.compile(optimizer='adam', loss='mean_squared_error', metrics=['acc'])
+	return model
+
+def training_model_by_prob(learn_data, test_data, epochs=30):
+	x_data = np.array([transform_xs(x) for x in learn_data.iloc[:,0].values])
+	y_data = cal_pyx(kernel_x_y1, kernel_x_y0, py, learn_data.iloc[:,0].values)
+	#print(y_data)
+	x_test = np.array([transform_xs(x) for x in test_data.iloc[:,0].values])
+	y_test = cal_pyx(kernel_x_y1, kernel_x_y0, py, test_data.iloc[:,0].values)
+	model = create_model(x_data.shape[1])
+	history=model.fit(x_data, y_data, epochs=epochs, verbose=1, validation_data=(x_test, y_test))
+	return (model, history)
+
+def training_model_by_label(learn_data, test_data, epochs=30):
+	x_data = np.array([transform_xs(x) for x in learn_data.iloc[:,0].values])
+	y_data = learn_data.iloc[:,1]
+	#print(y_data)
+	x_test = np.array([transform_xs(x) for x in test_data.iloc[:,0].values])
+	y_test = test_data.iloc[:,1]
+	model = create_model(x_data.shape[1])
+	history=model.fit(x_data, y_data, epochs=epochs, verbose=1, validation_data=(x_test, y_test))
+	return (model, history)
 
 df_sample=df_raw.sample(n=2048)
 
@@ -42,12 +75,12 @@ kernel_x_y0.set_bandwidth(0.3)
 
 print(py, kernel_xy.integrate_box([-np.inf, df_sample.iloc[:,1].values.mean()], [np.inf, np.inf]))
 
-plt.figure(figsize=[5.5, 8])
-plt.suptitle('Learning Norm Classifier', fontsize=16)
+plt.figure(figsize=[5.5, 5.5])
+plt.suptitle('Training Normal Bayes ({0},{1})'.format(NUM_LAYER1, NUM_HIDDEN), fontsize=16)
 xs = np.linspace(df_sample.iloc[:,0].min(), df_sample.iloc[:,0].max(), 500)
 ys = np.linspace(df_sample.iloc[:,1].min(), df_sample.iloc[:,1].max(), 50)
 # multivarian density
-plt.subplot(3, 2, 1)
+plt.subplot(2, 2, 1)
 xx, yy = np.meshgrid(xs, ys)
 pos_xy = np.vstack([xx.ravel(), yy.ravel()])
 pdf_xy = kernel_xy(pos_xy).reshape(xx.shape)
@@ -56,46 +89,31 @@ pdf_xy = kernel_xy(pos_xy).reshape(xx.shape)
 sns.heatmap(pdf_xy, cbar=False, xticklabels=False, yticklabels=False)
 # pyx density computed by fxy(x,y)/fy(y)
 # py computed by integration p(y) for (0.5, 1.0)
-plt.subplot(3, 2, 2)
+plt.subplot(2, 2, 2)
 plt.plot(xs, kernel_x_y1(xs))
 plt.title('f(T=1)')
-# pyx method2
 learn_data = df_sample
 x_data = np.array([transform_xs(x) for x in learn_data.iloc[:,0].values])
 #y_data = cal_pyx(kernel_x_y1, kernel_x_y0, py, learn_data.iloc[:,0].values)
-y_data = np.array([(0, 1) if x==1 else (1, 0) for x in learn_data.iloc[:,1].values])
-print(y_data)
-test_data = df_raw.sample(n=2048)
-x_test = np.array([transform_xs(x) for x in test_data.iloc[:,0].values])
-y_test = np.array([(0, 1) if x==1 else (1, 0) for x in test_data.iloc[:,1].values])
-model = Sequential()
-model.add(Dense(x_data.shape[1] * 5, activation='relu', input_dim=x_data.shape[1]))
-model.add(Dense(x_data.shape[1] * 5, activation='relu'))
-model.add(Dense(y_data.shape[1], activation='softmax'))
-model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['acc'])
-history=model.fit(x_data, y_data, epochs=30, verbose = 0, validation_data=(x_test, y_test))
-x_summary = np.array([transform_xs(x) for x in xs])
-y_summary = model.predict(x_summary)
-plt.subplot(3, 2, 3)
-pyx = cal_pyx(kernel_x_y1, kernel_x_y0, py, xs)
+y_data = learn_data.iloc[:,1].values
+#print(y_data)
+clf_norm = GaussianNB()
+clf_norm.fit(x_data, y_data)
+model_by_label, history_by_label=training_model_by_label(df_sample, df_raw.sample(n=2048))
+x_summary=xs
+prob_summary=clf_norm.predict_proba(np.array([transform_xs(x) for x in x_summary]))[:,1]
+learn_summary = model_by_label.predict(np.array([transform_xs(x) for x in x_summary]))
+plt.subplot(2, 2, 3)
+pyx = cal_pyx(kernel_x_y1, kernel_x_y0, py, x_summary)
 #print(pyx.shape, pyx)
-plt.scatter(xs, pyx.reshape(xs.shape), s=1, c='b', label='sample')
-plt.scatter(xs, y_summary[:,1], s=1, c='r', label='predict')
+plt.scatter(x_summary, pyx.reshape(x_summary.shape), s=1, c='b', label='sample')
+plt.scatter(x_summary, prob_summary, s=1, c='r', label='Bayes')
+plt.scatter(x_summary, learn_summary, s=1, c='g', label='ML')
 plt.legend()
 plt.title('P(T=1)')
-plt.subplot(3, 2, 4)
-xs_s = np.linspace(df_sample.iloc[:,0].min(), df_sample.iloc[:,0].max(), 100)
-ys_s = np.array([1 if 2 * x - 1 >= 0 else 0 for x in cal_pyx(kernel_x_y1, kernel_x_y0, py, xs_s)])
-ys_summary = np.array([1 if x[0] <= x[1] else 0 for x in model.predict(np.array([transform_xs(x) for x in xs_s]))])
-plt.scatter(xs_s, ys_s, s=2, c='b', label='sample')
-plt.scatter(xs_s, ys_summary, s=2, c='r', label='predict')
+plt.subplot(2, 2, 4)
+plt.plot(history_by_label.history['loss'], label='loss')
+plt.plot(history_by_label.history['val_loss'], label='loss(test)')
 plt.legend()
-plt.subplot(3, 2, 5)
-plt.plot(history.history['loss'], label='loss')
-plt.plot(history.history['val_loss'], label='loss(test)')
-plt.legend()
-plt.subplot(3, 2, 6)
-plt.plot(history.history['acc'], label='accuracy')
-plt.plot(history.history['val_acc'], label='accuracy(test)')
-plt.legend()
+plt.title('ML')
 plt.show()

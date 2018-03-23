@@ -7,6 +7,8 @@ from keras.models import Sequential
 from keras.layers import Dense
 from keras.utils import *
 from keras.callbacks import *
+from keras.utils.generic_utils import get_custom_objects
+from sklearn.naive_bayes import GaussianNB
 
 NUM_LAYER1 = 1000
 NUM_HIDDEN = 500
@@ -18,6 +20,11 @@ def cal_pyx(kernel_x_y1, kernel_x_y0, py, xs):
 
 def transform_xs(x):
 	return [0, x]
+
+df_raw=pd.DataFrame({
+    'A':np.random.random(size=10000),
+    'T':np.random.randint(2, size=10000)},
+    columns=['A','T'])
 
 def create_model(input_dim):
 	model = Sequential()
@@ -47,11 +54,6 @@ def training_model_by_label(learn_data, test_data, epochs=30):
 	history=model.fit(x_data, y_data, epochs=epochs, verbose=1, validation_data=(x_test, y_test))
 	return (model, history)
 
-df_raw=pd.DataFrame({
-    'A':np.random.random_sample(size=10000),
-    'T':np.random.randint(2, size=10000)},
-    columns=['A','T'])
-
 df_sample=df_raw.sample(n=2048)
 
 data_xy = np.vstack([df_sample.iloc[:,0].ravel(), df_sample.iloc[:,1].ravel()])
@@ -73,12 +75,12 @@ kernel_x_y0.set_bandwidth(0.3)
 
 print(py, kernel_xy.integrate_box([-np.inf, df_sample.iloc[:,1].values.mean()], [np.inf, np.inf]))
 
-plt.figure(figsize=[6, 9])
-plt.suptitle('Training Random Probability ({0},{1})'.format(NUM_LAYER1, NUM_HIDDEN), fontsize=16)
+plt.figure(figsize=[5.5, 5.5])
+plt.suptitle('Training Random Bayes ({0},{1})'.format(NUM_LAYER1, NUM_HIDDEN), fontsize=16)
 xs = np.linspace(df_sample.iloc[:,0].min(), df_sample.iloc[:,0].max(), 500)
 ys = np.linspace(df_sample.iloc[:,1].min(), df_sample.iloc[:,1].max(), 50)
 # multivarian density
-plt.subplot(3, 2, 1)
+plt.subplot(2, 2, 1)
 xx, yy = np.meshgrid(xs, ys)
 pos_xy = np.vstack([xx.ravel(), yy.ravel()])
 pdf_xy = kernel_xy(pos_xy).reshape(xx.shape)
@@ -86,42 +88,32 @@ pdf_xy = kernel_xy(pos_xy).reshape(xx.shape)
 #print(pdf_xy.shape, pdf_xy)
 sns.heatmap(pdf_xy, cbar=False, xticklabels=False, yticklabels=False)
 # pyx density computed by fxy(x,y)/fy(y)
-plt.subplot(3, 2, 2)
+# py computed by integration p(y) for (0.5, 1.0)
+plt.subplot(2, 2, 2)
 plt.plot(xs, kernel_x_y1(xs))
 plt.title('f(T=1)')
-# pyx method2
-
+learn_data = df_sample
+x_data = np.array([transform_xs(x) for x in learn_data.iloc[:,0].values])
+#y_data = cal_pyx(kernel_x_y1, kernel_x_y0, py, learn_data.iloc[:,0].values)
+y_data = learn_data.iloc[:,1].values
+#print(y_data)
+clf_norm = GaussianNB()
+clf_norm.fit(x_data, y_data)
 model_by_label, history_by_label=training_model_by_label(df_sample, df_raw.sample(n=2048))
-#x_summary=np.linspace(-2.5, 2.5, 100)
 x_summary=xs
-y_summary = model_by_label.predict(np.array([transform_xs(x) for x in x_summary]))
-plt.subplot(3, 2, 3)
+prob_summary=clf_norm.predict_proba(np.array([transform_xs(x) for x in x_summary]))[:,1]
+learn_summary = model_by_label.predict(np.array([transform_xs(x) for x in x_summary]))
+plt.subplot(2, 2, 3)
 pyx = cal_pyx(kernel_x_y1, kernel_x_y0, py, x_summary)
 #print(pyx.shape, pyx)
 plt.scatter(x_summary, pyx.reshape(x_summary.shape), s=1, c='b', label='sample')
-plt.scatter(x_summary, y_summary, s=1, c='r', label='predict')
+plt.scatter(x_summary, prob_summary, s=1, c='r', label='Bayes')
+plt.scatter(x_summary, learn_summary, s=1, c='g', label='ML')
 plt.legend()
 plt.title('P(T=1)')
-plt.subplot(3, 2, 4)
+plt.subplot(2, 2, 4)
 plt.plot(history_by_label.history['loss'], label='loss')
 plt.plot(history_by_label.history['val_loss'], label='loss(test)')
 plt.legend()
-plt.title('by Label')
-
-model_by_prob, history_by_prob=training_model_by_prob(df_sample, df_raw.sample(n=2048))
-#x_summary=np.linspace(-2.5, 2.5, 100)
-x_summary=xs
-y_summary = model_by_prob.predict(np.array([transform_xs(x) for x in x_summary]))
-plt.subplot(3, 2, 5)
-pyx = cal_pyx(kernel_x_y1, kernel_x_y0, py, x_summary)
-#print(pyx.shape, pyx)
-plt.scatter(x_summary, pyx.reshape(x_summary.shape), s=1, c='b', label='sample')
-plt.scatter(x_summary, y_summary, s=1, c='r', label='predict')
-plt.legend()
-plt.title('P(T=1)')
-plt.subplot(3, 2, 6)
-plt.plot(history_by_prob.history['loss'], label='loss')
-plt.plot(history_by_prob.history['val_loss'], label='loss(test)')
-plt.legend()
-plt.title('by Prob')
+plt.title('ML')
 plt.show()
